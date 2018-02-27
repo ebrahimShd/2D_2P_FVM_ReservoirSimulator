@@ -1,0 +1,23 @@
+function [outMesh,isOut,isOutBound] = loadResult(mesh,deltaSol)
+	outMesh = mesh;isOut = false;
+    nPhases = mesh.nPhases;
+    sMaxChangeTol = mesh.sMaxChangeTol;
+    pMaxChangeTol = mesh.pMaxChangeTol;
+	isOutBound = false(1,nPhases*mesh.nMesh);
+	for cvId = 1:mesh.nMesh
+		dp = deltaSol(nPhases*(cvId-1)+1);
+		ds = deltaSol(nPhases*(cvId-1)+2);
+        dp = min(max(dp,-pMaxChangeTol),pMaxChangeTol);
+        ds = min(max(ds,-sMaxChangeTol),sMaxChangeTol);
+		swNew = outMesh.sw(cvId)+ds;
+        pNew = outMesh.p(cvId)+dp;
+		if (swNew<0.0) || (swNew>1.0), isOutBound(nPhases*(cvId-1)+2)=true;end
+        if (pNew<0.0) || (pNew>1.0e20), isOutBound(nPhases*(cvId-1)+1)=true;end
+        outMesh.p(cvId) = min(max(pNew,0.0),1.0e20);
+		outMesh.sw(cvId) = min(max(swNew,0.0),1.0);
+		outMesh.so(cvId) = 1-outMesh.sw(cvId);
+		outMesh.sg(cvId) = 1-outMesh.sw(cvId)-outMesh.so(cvId);
+	end
+	outMesh.isOutBound = isOutBound;
+    if(sum(isOutBound))>0,isOut=true;end
+end
